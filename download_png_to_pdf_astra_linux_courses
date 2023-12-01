@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Определение функции для очистки файла
+cleanup() {
+    echo "Очистка файла urls_list.txt..."
+    > urls_list.txt
+}
+
+# Установка trap для вызова функции cleanup при получении сигналов EXIT, INT, TERM
+trap cleanup EXIT INT TERM
+
+# Запрос базового URL
+read -p "Введите базовый URL: " base_url
+
+# Скачивание файла 00000.png
+wget "${base_url}00000.png"
+
+# Получение числа из имени последнего скачанного файла
+last_file=$(ls -t | grep -m 1 -o '[0-9]\+')
+echo "Последний скачанный файл имеет номер: $last_file"
+
+# Запрос подтверждения начального числа диапазона
+read -p "Вы хотите использовать это число как начальное число диапазона? (y/n) " confirm
+if [[ $confirm == "y" ]]
+then
+    start=$last_file
+else
+    read -p "Введите начальное число диапазона: " start
+fi
+
+# Запрос конечного числа диапазона
+read -p "Введите конечное число диапазона: " end
+
+for i in $(seq $start $end)
+do
+    printf -v url "${base_url}%05d.png" $i
+    echo "$url" >> urls_list.txt
+done
+
+while read url; do
+    wget $url
+done < urls_list.txt
+
+# Запрос на создание PDF
+read -p "Вы хотите создать PDF из всех скаченных файлов? (y/n) " answer
+if [[ $answer == "y" ]]
+then
+    # brew install imagemagick и Замените 'output.pdf' на имя вашего файла PDF
+    convert *.png output.pdf
+    echo "PDF успешно создан."
+
+    # Запрос на удаление PNG-файлов
+    read -p "Вы хотите удалить все скачанные PNG-файлы? (y/n) " del_answer
+    if [[ $del_answer == "y" ]]
+    then
+        rm *.png
+        echo "Все PNG-файлы были удалены."
+    else
+        echo "PNG-файлы не были удалены."
+    fi
+else
+    echo "Процедура создания PDF пропущена."
+fi
